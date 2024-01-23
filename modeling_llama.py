@@ -50,6 +50,18 @@ from ...utils import (
 from ...utils.import_utils import is_torch_fx_available
 from .configuration_llama import LlamaConfig
 
+calculate_entropy = True
+save_entropy = False
+entropy_save_prefix = 'entropy'
+entropy_save_dir = '/home/u4874056/entropy_dump'
+def entropy(x):
+    x = x.clone().to(dtype=torch.float64)
+
+    exp_x = torch.exp(x)
+    A = torch.sum(exp_x, dim=2)    # sum of exp(x_i)
+    B = torch.sum(x*exp_x, dim=2)  # sum of x_i * exp(x_i)
+
+    return torch.log(A) - B/A
 
 if is_flash_attn_2_available():
     from flash_attn import flash_attn_func, flash_attn_varlen_func
@@ -962,6 +974,9 @@ class LlamaModel(LlamaPreTrainedModel):
         self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
         self.gradient_checkpointing = False
+
+        self.num_gen = 0
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -1052,7 +1067,10 @@ class LlamaModel(LlamaPreTrainedModel):
         all_self_attns = () if output_attentions else None
         next_decoder_cache = None
 
-        for decoder_layer in self.layers:
+        for idx, decoder_layer in enumerate(self.layers):
+            if self.num_gen >= 53 and self.num_gen <= 57 and idx >= 19 and idx <= 30:
+                print("skip")
+                continue
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
@@ -1078,6 +1096,12 @@ class LlamaModel(LlamaPreTrainedModel):
 
             hidden_states = layer_outputs[0]
 
+# entropy start
+            if calculate_entropy and save_entropy:
+                print(entropy(hidden_states))
+                torch.save(entropy(hidden_states), f'{entropy_save_dir}/{entropy_save_prefix}_{self.num_gen}_{idx}.pt')
+# entropy end
+
             if use_cache:
                 next_decoder_cache = layer_outputs[2 if output_attentions else 1]
 
@@ -1085,6 +1109,7 @@ class LlamaModel(LlamaPreTrainedModel):
                 all_self_attns += (layer_outputs[1],)
 
         hidden_states = self.norm(hidden_states)
+        self.num_gen = hidden_states.shape[1]
 
         # add hidden states from the last decoder layer
         if output_hidden_states:
