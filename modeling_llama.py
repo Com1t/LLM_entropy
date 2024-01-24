@@ -51,9 +51,9 @@ from ...utils.import_utils import is_torch_fx_available
 from .configuration_llama import LlamaConfig
 
 calculate_entropy = True
-save_entropy = False
+save_entropy = True
 entropy_save_prefix = 'entropy'
-entropy_save_dir = '/home/u4874056/entropy_dump'
+entropy_save_dir = '/home/u4874056/LLM_entropy/entropy_dump'
 def entropy(x):
     x = x.clone().to(dtype=torch.float64)
 
@@ -1068,9 +1068,6 @@ class LlamaModel(LlamaPreTrainedModel):
         next_decoder_cache = None
 
         for idx, decoder_layer in enumerate(self.layers):
-            if self.num_gen >= 53 and self.num_gen <= 57 and idx >= 19 and idx <= 30:
-                print("skip")
-                continue
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
@@ -1098,7 +1095,6 @@ class LlamaModel(LlamaPreTrainedModel):
 
 # entropy start
             if calculate_entropy and save_entropy:
-                print(entropy(hidden_states))
                 torch.save(entropy(hidden_states), f'{entropy_save_dir}/{entropy_save_prefix}_{self.num_gen}_{idx}.pt')
 # entropy end
 
@@ -1109,7 +1105,11 @@ class LlamaModel(LlamaPreTrainedModel):
                 all_self_attns += (layer_outputs[1],)
 
         hidden_states = self.norm(hidden_states)
-        self.num_gen = hidden_states.shape[1]
+
+        if use_cache == True:
+            self.num_gen += hidden_states.shape[1]
+        else:
+            self.num_gen = hidden_states.shape[1]
 
         # add hidden states from the last decoder layer
         if output_hidden_states:
