@@ -1,0 +1,6 @@
+accelerate
+bitsandbytes
+datasets
+fire
+transformers>=4.28.0
+sentencepiece
