@@ -50,19 +50,6 @@ from ...utils import (
 from ...utils.import_utils import is_torch_fx_available
 from .configuration_llama import LlamaConfig
 
-calculate_entropy = True
-save_entropy = True
-entropy_save_prefix = 'entropy'
-entropy_save_dir = '/home/u4874056/LLM_entropy/entropy_dump'
-def entropy(x):
-    x = x.clone().to(dtype=torch.float64)
-
-    exp_x = torch.exp(x)
-    A = torch.sum(exp_x, dim=2)    # sum of exp(x_i)
-    B = torch.sum(x*exp_x, dim=2)  # sum of x_i * exp(x_i)
-
-    return torch.log(A) - B/A
-
 if is_flash_attn_2_available():
     from flash_attn import flash_attn_func, flash_attn_varlen_func
     from flash_attn.bert_padding import index_first_axis, pad_input, unpad_input  # noqa
@@ -977,6 +964,11 @@ class LlamaModel(LlamaPreTrainedModel):
 
         self.num_gen = 0
 
+        self.calculate_entropy = True
+        self.save_entropy = False
+        self.entropy_save_prefix = 'entropy'
+        self.entropy_save_dir = 'some_directory/entropy_dump'
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -985,6 +977,15 @@ class LlamaModel(LlamaPreTrainedModel):
 
     def set_input_embeddings(self, value):
         self.embed_tokens = value
+
+    def entropy(self, x):
+        x = x.clone().to(dtype=torch.float64)
+
+        exp_x = torch.exp(x)
+        A = torch.sum(exp_x, dim=2)    # sum of exp(x_i)
+        B = torch.sum(x*exp_x, dim=2)  # sum of x_i * exp(x_i)
+
+        return torch.log(A) - B/A
 
     @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
     def forward(
@@ -1094,8 +1095,8 @@ class LlamaModel(LlamaPreTrainedModel):
             hidden_states = layer_outputs[0]
 
 # entropy start
-            if calculate_entropy and save_entropy:
-                torch.save(entropy(hidden_states), f'{entropy_save_dir}/{entropy_save_prefix}_{self.num_gen}_{idx}.pt')
+            if self.save_entropy:
+                torch.save(self.entropy(hidden_states), f'{self.entropy_save_dir}/{self.entropy_save_prefix}_{self.num_gen}_{idx}.pt')
 # entropy end
 
             if use_cache:
