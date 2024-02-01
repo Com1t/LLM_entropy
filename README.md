@@ -39,12 +39,15 @@ This repository also contains an extra `simple_generate.py` example for simplest
 
 To reproduce the experiment
 1. Replace the `modeling_llama.py` in your python library by a soft link.
-2. Modify the following `modeling_llama.py` variables, `entropy_save_dir` to designated directory for entropy dump, and set `calculate_entropy` and `save_entropy` to True.
-3. Run inference as usual
-4. The modelling_llama will dump several entropy file in `{entropy_save_dir}` as `{entropy_save_prefix}_{self.num_gen}_{idx}.pt`
+2. Modify the following variables in `simple_generate.py`, `model.model.entropy_save_dir`(Line ~172) to designated directory for entropy dump, and set `model.model.calculate_entropy`(Line ~156) and `model.model.save_entropy`(Line ~157) to True.
+3. Run inference by `simple_generate.py`
+4. The modelling_llama will dump several entropy file in `{model.model.entropy_save_dir}` as `{entropy_save_prefix}_{num_gen}_{idx}.pt`
 5. Use `heat_map.ipynb` to plot the heat map.
 
-NOTE: The `entropy_save_dir` should be created before running this experiment.
+NOTE:
+1. The `entropy_save_dir` will automatically be cleaned before running this experiment.
+2. `entropy_save_prefix` can also be modified by set `model.model.entropy_save_prefix` variable.
+3. In line 171, `model.model.num_gen = 0`, because `num_gen` is accumulated number of generation.
 
 While there are many different usage to this repository, here I only interate over the usage of `simple_generate.py`.
 
